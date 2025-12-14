@@ -81,10 +81,9 @@ export default function Personal() {
         <div className="flex-1">
           <p className="text-zinc-600 dark:text-zinc-400">
             Half-Brazilian, half-Portuguese tinkerer passionate about systems,
-            privacy, and crypto. Hooked on system internals since
-            childhood—modding games, poking at infosec problems, and
-            understanding how everything connects. All-in on Rust, systems, and
-            blockchains.
+            privacy, and crypto. Hooked on system internals since childhood;
+            modding games, poking at infosec problems, and understanding how
+            everything connects. All-in on Rust, systems, and blockchains.
           </p>
         </div>
       </motion.section>

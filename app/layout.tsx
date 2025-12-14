@@ -12,16 +12,17 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nim-fawn.vercel.app/'),
+  metadataBase: new URL('https://figtracer.com'),
   alternates: {
-    canonical: '/'
+    canonical: '/',
   },
   title: {
-    default: 'Nim - Personal website template',
-    template: '%s | Nim'
+    default: '@figtracer',
+    template: '%s | Figtracer',
   },
-  description:  'Nim is a free and open-source personal website template built with Next.js 15, React 19 and Motion-Primitives.',
-};
+  description:
+    'Half-Brazilian, half-Portuguese tinkerer passionate about systems, privacy, and crypto. All-in on Rust, systems, and blockchains.',
+}
 
 const geist = Geist({
   variable: '--font-geist',

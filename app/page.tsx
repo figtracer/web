@@ -80,10 +80,10 @@ export default function Personal() {
       >
         <div className="flex-1">
           <p className="text-zinc-600 dark:text-zinc-400">
-            Half-Brazilian, half-Portuguese tinkerer passionate about systems,
-            privacy, and crypto. Hooked on system internals since childhood;
+            half-brazilian, half-portuguese tinkerer passionate about systems,
+            privacy, and crypto. hooked on system internals since childhood;
             modding games, poking at infosec problems, and understanding how
-            everything connects. All-in on Rust, systems, and blockchains.
+            everything connects. all-in on Rust, systems, and blockchains.
           </p>
         </div>
       </motion.section>
@@ -92,7 +92,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">Personal Projects</h3>
+        <h3 className="mb-5 text-lg font-medium">personal projects</h3>
         <div className="flex flex-col space-y-4">
           {PROJECTS.map((project) => (
             <div key={project.id} className="space-y-1">
@@ -117,7 +117,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">Contributions</h3>
+        <h3 className="mb-5 text-lg font-medium">contributions</h3>
         <div className="flex flex-col space-y-4">
           {CONTRIBUTIONS.map((contribution) => (
             <div key={contribution.id} className="space-y-1">
@@ -142,7 +142,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">Experience</h3>
+        <h3 className="mb-5 text-lg font-medium">experience</h3>
         <div className="flex flex-col space-y-2">
           {WORK_EXPERIENCE.map((job) => (
             <a
@@ -178,7 +178,7 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-3 text-lg font-medium">Blog</h3>
+        <h3 className="mb-3 text-lg font-medium">blog</h3>
         <div className="flex flex-col space-y-0">
           <AnimatedBackground
             enableHover
@@ -214,9 +214,9 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">Connect</h3>
+        <h3 className="mb-5 text-lg font-medium">connect</h3>
         <p className="mb-5 text-zinc-600 dark:text-zinc-400">
-          Feel free to contact me at{' '}
+          feel free to contact me at{' '}
           <a className="underline dark:text-zinc-300" href={`mailto:${EMAIL}`}>
             {EMAIL}
           </a>

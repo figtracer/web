@@ -8,8 +8,7 @@ type Project = {
 type WorkExperience = {
   company: string
   title: string
-  start: string
-  end: string
+  date: string
   link: string
   id: string
 }
@@ -60,32 +59,28 @@ export const WORK_EXPERIENCE: WorkExperience[] = [
   {
     company: 'EthGlobal Prague',
     title: 'Hacker',
-    start: '2025',
-    end: '2025',
+    date: '2025',
     link: 'https://ethglobal.com/events/prague',
     id: 'work1',
   },
   {
     company: 'EthPrague Conference',
     title: 'Volunteer',
-    start: '2025',
-    end: '2025',
+    date: '2025',
     link: 'https://ethprague.com',
     id: 'work2',
   },
   {
     company: 'NDC Porto',
     title: 'Crew Member',
-    start: '2024',
-    end: '2024',
+    date: '2024',
     link: 'https://ndcporto.com',
     id: 'work3',
   },
   {
     company: 'Polygon Porto',
     title: 'Volunteer',
-    start: '2023',
-    end: '2023',
+    date: '2023',
     link: 'https://polygon.technology',
     id: 'work4',
   },

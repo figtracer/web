@@ -1,28 +1,28 @@
 export const metadata = {
-  title: 'decrypting a upx packed arm iot botnet',
-  description: 'Reverse engineering analysis of ProjectYBot malware',
-  date: '2024-03',
-  authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
+title: 'decrypting a upx packed arm iot botnet',
+description: 'Reverse engineering analysis of ProjectYBot malware',
+date: '2024-03',
+authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
 }
 
 # decrypting a upx packed arm iot botnet
 
-> This article contains technical analysis of malicious software. All malware samples discussed have been handled in a controlled, isolated laboratory environment using proper security protocols.
+> this article contains technical analysis of malicious software. all malware samples discussed have been handled in a controlled, isolated laboratory environment using proper security protocols.
 
-I got a notification from MalwareBazaar that a new ELF binary was uploaded so I decided to take a look at it. Here's the sha256 hash if you want to check it out:
+i got a notification from MalwareBazaar that a new ELF binary was uploaded so i decided to take a look at it. here's the sha256 hash if you want to check it out:
 
 ```
 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b
 ```
 
-It's a ELF 32-bit executable with no section header, which could mean that it's packed.
+it's a ELF 32-bit executable with no section header, which could mean that it's packed.
 
 ```bash
 ➜  Desktop file 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.ELF
 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.ELF: ELF 32-bit LSB executable, ARM, EABI4 version 1 (GNU/Linux), statically linked, no section header
 ```
 
-That checks out when we run `strings`, the binary is packed with UPX (not the best way to figure that out, but it's usually enough)
+that checks out when we run `strings`, the binary is packed with UPX (not the best way to figure that out, but it's usually enough)
 
 ```bash
 ➜  decrpyt_table strings 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.elf
@@ -34,7 +34,7 @@ UPX!
 UPX!  <--------------------------
 ```
 
-Let's decrypt it:
+let's decrypt it:
 
 ```bash
 ➜  decrpyt_table upx -d 0aa7304453ec3340cb88c54191f6170b3a1ca1bbc175f1ea70484f114b16923b.elf
@@ -53,29 +53,29 @@ UPX 4.2.4       Markus Oberhumer, Laszlo Molnar & John Reiser    May 9th 2024
 Unpacked 1 file.
 ```
 
-The binary was 33% of its original size, disassembling it would return really cryptic assembly code. Fortunately, we saw it early enough :)  
+the binary was 33% of its original size, disassembling it would return really cryptic assembly code. fortunately, we saw it early enough :)
 
-After unpacking the binary it's pretty easy to follow up its steps.
+after unpacking the binary it's pretty easy to follow up its steps.
 
-> I'm going to use Binary Ninja to unravel the binary and we'll not be performing dynamic analysis in this article.
+> i'm going to use Binary Ninja to unravel the binary and we'll not be performing dynamic analysis in this article.
 
-After opening the binary in Binja, let's look at the Triage:
+i examined the binary structure and identified key functions that revealed the malware's behavior. the binary contained several suspicious function calls and network communication patterns.
 
-From this view alone, we can see that:
+from the static analysis, we can see that:
 
 - it's indeed an ARM32 binary (platform: linux-armv7)
 - its entry point is at `0x8194` and its base address is `0x8000`
 - from the exports, we can guess that this malware is going to perform a couple of scans to search for devices from certain manufactures
 - will likely perform some kind of DoS attack
 
-Let's take a quick look at the `main()` function to see what's going on:
+let's take a quick look at the `main()` function to see what's going on:
 
 - it has some anti-debugging techniques but that's not a concern since we'll not be doing dynamic analysis in this blog
 - `table_init()` seems interesting to me
 - `resolve_cnc_addr` could mean that it's getting the c2 server's ip, that's a good hint on what this is going to do
 - initializes more stuff.........
 
-There's a lot of info here but I decided to start analyzing `exploit_init()` since this is probably where the good stuff is at.
+there's a lot of info here but I decided to start analyzing `exploit_init()` since this is probably where the good stuff is at.
 
 ```c
 uint32_t exploit_init(int32_t arg1, uint32_t arg2 @ r9, int32_t* arg3 @ r10, void* arg4 @ r11)
@@ -137,34 +137,32 @@ xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://sche
 - attempts to create a raw IPv4 socket for each host that can be used for direct network protocol access and packet manipulation (`socket(2,3)` where 2 = `AF_INET` and 3 = `SOCK_RAW`) and if it connects, tries setting the `O_NONBLOCK` flag so that read/write operations return immediately instead of waiting (`000083f0 __GI___libc_fcntl(socket_fd, 4, (r0_7 | 0x800), r3_3);`)
 - sends some data packets including a POST request to return a binary `abd` from `5.59.248.92` and run it with special privileges on `/tmp/.e` or `/var/dev/.e`
 
-Let's dive deeper....  
+let's dive deeper....
 
-I found this function `attack_init()` which mentions a couple of attacks for different networking protocols:
+i found this function `attack_init()` which mentions a couple of attacks for different networking protocols:
 
 - `attack-udp-plain`
 - `attack-udpe-vse`
 - `attack-tcp-stomp`
-- `attack-udp-ovhhex`  
-   (...)
+- `attack-udp-ovhhex`
+  (...)
 
-> TCP STOMP represents a significant evolution in TCP-based Denial of Service (DoS). This technique exploits fundamental aspects of TCP connection handling to overwhelm target systems.
-
-If we follow the traces of any of these attack functions, there's a function called `table_unlock_val()` that appears to be used to retrieve values from a table:
+if we follow the traces of any of these attack functions, there's a function called `table_unlock_val()` that appears to be used to retrieve values from a table:
 
 (**!**) the `table_init` function that we found at the start could be useful here! let's check it out:
 
 - allocates some arbitrary memory bytes
 - copies unreadable garbage strings (we know that these are not garbage strings) into a memory location with `memcpy()`
 
-What's left to do is get these string values from the `table_init()` function and make our own python program that imitates `table_unlock_val()` to try and get the original ones.
+what's left to do is get these string values from the `table_init()` function and make our own python program that imitates `table_unlock_val()` to try and get the original ones.
 
-To write the script I needed the table key, which was pretty easy to find:
+to write the script i needed the table key, which was pretty easy to find:
 
 ```
 000341ec  uint32_t table_key = 0xdeaddaad
 ```
 
-The final script:
+the final script:
 
 ```python
 TABLE_KEY = 0xdeaddaad
@@ -213,7 +211,7 @@ if __name__ == "__main__":
 TABLE_KEY = 0xdeaddaad
 ```
 
-Initializing the table key
+initializing the table key
 
 (2)
 
@@ -222,7 +220,7 @@ def decrypt_byte(byte, key):
     return byte ^ (key & 0xFF) ^ ((key >> 8) & 0xFF) ^ ((key >> 16) & 0xFF) ^ ((key >> 24) & 0xFF)
 ```
 
-This function takes a single encrypted byte and our key, then:
+this function takes a single encrypted byte and our key, then:
 
 - splits our key into 4 parts (using & 0xFF to get each byte)
 - uses the xor operation (^) to "mix" each part with our encrypted byte
@@ -238,7 +236,7 @@ encrypted_data = {
 }
 ```
 
-This is just a dictionary holding all our encrypted strings. each string is indexed by a number (0 through 10). these are the garbage strings we want to decrypt.
+this is just a dictionary holding all our encrypted strings. each string is indexed by a number (0 through 10). these are the garbage strings we want to decrypt.
 
 (4)
 
@@ -259,7 +257,7 @@ def table_unlock_val(index):
     print("decrypted data (ascii):", decrypted_bytes.decode('ascii', errors='replace'))
 ```
 
-This is where the juice is, for each index:
+this is where the juice is, for each index:
 
 - we check if we actually have data for it
 - grab the encrypted string
@@ -276,9 +274,9 @@ if __name__ == "__main__":
         print()
 ```
 
-Finally, this part just runs through all our encrypted strings (0 through 10) and decrypts each one...
+finally, this part just runs through all our encrypted strings (0 through 10) and decrypts each one...
 
-This is was the output:
+this is was the output:
 
 ```
 Data for index 0:
@@ -326,13 +324,13 @@ Encrypted data: Ik~mhhe+1*4$,Smj`ksw$JP$54*4?$SKS20-$EtthaSafOmp+173*72$,OLPIH($
 Decrypted data (ASCII): Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.
 ```
 
-As expected, these were real strings and we got even more information:
+as expected, these were real strings and we got even more information:
 
 - we can confirm that this is a Mirai family malware called ProjectYBot.
 - attempts to connect to C2: `cnc.ghty.onli`
 - uses various User-Agent strings for masking
 - checks for busybox (tells the malware if it's an embedded device which is the target here + has essential commands like `ls`, `cp`...)
 
-Mirai family malware is growing exponentially every year with the growth of ARM IoT devices.  
+mirai family malware is growing exponentially every year with the growth of ARM IoT devices.
 
-The analysis reveals ProjectYBot as a sophisticated evolution of the Mirai malware family, highlighting the ongoing arms race in IoT security.
+the analysis reveals ProjectYBot as a sophisticated evolution of the Mirai malware family, highlighting the ongoing arms race in IoT security.

@@ -1,8 +1,8 @@
 export const metadata = {
-  title: 'how does reth maintain blobs in the txpool?',
-  description: "Deep dive into Reth's blob maintenance mechanisms",
-  date: '2025-12',
-  authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
+    title: 'how does reth maintain blobs in the txpool?',
+    description: "Deep dive into Reth's blob maintenance mechanisms",
+    date: '2025-12',
+    authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
 }
 
 # how does reth maintain blobs in the txpool?
@@ -10,7 +10,6 @@ export const metadata = {
 > all snippets of code are shortened for brevity
 
 i was skimming through Reth's metrics and I found this interesting sawtooth wave pattern in the transaction pool's metrics
-
 so i decided to take a deeper look at it and figure out how blobs are maintained in Reth terms
 
 ## maintain.rs
@@ -116,7 +115,7 @@ fn delete_all(&self, txs: Vec<B256>) -> Result<(), BlobStoreError> {
 
 ```rust
 fn cleanup(&self) -> BlobStoreCleanupStat {
-	BlobStoreCleanupStat::default()
+BlobStoreCleanupStat::default()
 }
 ```
 
@@ -164,15 +163,73 @@ this deferred cleanup pattern is why we might see the "Failed Deletes" metric ti
 
 i grabbed some data from my full nightly node running at v1.9.3 and cross-referenced it with epoch timestamps from [ethpandaops](https://lab.ethpandaops.io/ethereum/epochs/411117?tab=slots)
 
-| epoch  | start time (GMT) | entries before | entries after | blobs deleted | blobs/block | MiB before | MiB after | MiB freed | avg sidecar size |
-| ------ | ---------------- | -------------- | ------------- | ------------- | ----------- | ---------- | --------- | --------- | ---------------- |
-| 411117 | 16:29:11         | 350            | 233           | ~117          | 3.7         | 90.1       | 59.4      | 30.7      | ~262 KiB         |
-| 411118 | 16:35:35         | 354            | 248           | ~106          | 3.3         | 86.1       | 56.4      | 29.7      | ~280 KiB         |
-| 411119 | 16:41:59         | 374            | 245           | ~129          | 4.0         | 84.1       | 55.4      | 28.7      | ~222 KiB         |
-| 411120 | 16:48:23         | 377            | 240           | ~137          | 4.3         | 85.3       | 56.0      | 29.3      | ~214 KiB         |
+<table>
+  <thead>
+    <tr>
+      <th>Epoch</th>
+      <th>Start Time (GMT)</th>
+      <th>Entries Before</th>
+      <th>Entries After</th>
+      <th>Blobs Deleted</th>
+      <th>Blobs / Block</th>
+      <th>MiB Before</th>
+      <th>MiB After</th>
+      <th>MiB Freed</th>
+      <th>Avg Sidecar Size</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>411117</td>
+      <td>16:29:11</td>
+      <td>350</td>
+      <td>233</td>
+      <td>~117</td>
+      <td>3.7</td>
+      <td>90.1</td>
+      <td>59.4</td>
+      <td>30.7</td>
+      <td>~262 KiB</td>
+    </tr>
+    <tr>
+      <td>411118</td>
+      <td>16:35:35</td>
+      <td>354</td>
+      <td>248</td>
+      <td>~106</td>
+      <td>3.3</td>
+      <td>86.1</td>
+      <td>56.4</td>
+      <td>29.7</td>
+      <td>~280 KiB</td>
+    </tr>
+    <tr>
+      <td>411119</td>
+      <td>16:41:59</td>
+      <td>374</td>
+      <td>245</td>
+      <td>~129</td>
+      <td>4.0</td>
+      <td>84.1</td>
+      <td>55.4</td>
+      <td>28.7</td>
+      <td>~222 KiB</td>
+    </tr>
+    <tr>
+      <td>411120</td>
+      <td>16:48:23</td>
+      <td>377</td>
+      <td>240</td>
+      <td>~137</td>
+      <td>4.3</td>
+      <td>85.3</td>
+      <td>56.0</td>
+      <td>29.3</td>
+      <td>~214 KiB</td>
+    </tr>
+  </tbody>
+</table>
 
 the drops align with epoch boundaries (~6.4 minutes apart). each finalization prunes around 100-130 blob sidecars, freeing up ~30 MiB of memory.
 
-the avg sidecar size being above 128Kb should be normal due to memory/runtime overheads.
-
-we're seeing about 3-4 blob transactions per block on average, with the current max of 6 blobs per block. with PeerDAS + BPO forks coming in Fusaka (epoch 411392!) we'll be able to increase the max blobs per block from 6 to +128 overtime.
+we're seeing about 3-4 blob transactions per block on average, with the current max of 9 blobs per block. with PeerDAS + BPO forks coming in Fusaka (epoch 411392!) we'll be able to increase the max blobs per block from 9 to +128 overtime.

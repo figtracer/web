@@ -1,23 +1,21 @@
 export const metadata = {
-  title: 'how do aave supply transactions actually work?',
-  description: "Understanding AAVE's supply mechanism at the bytecode level",
-  date: '2025-04',
-  authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
+    title: 'how do aave supply transactions actually work?',
+    description: "Understanding AAVE's supply mechanism at the bytecode level",
+    date: '2025-04',
+    authors: [{ name: 'Gustavo Figueiredo', url: 'https://figtracer.com' }],
 }
 
 # how do aave supply transactions actually work?
 
-Example: https://dashboard.tenderly.co/tx/0x7b6e7761850c74b0d5c5743003e8f9dffefec6aadf720e540db1dee308ad4d72
+example: [tenderly](https://dashboard.tenderly.co/tx/0x7b6e7761850c74b0d5c5743003e8f9dffefec6aadf720e540db1dee308ad4d72)
 
-I was studying AAVE's V2 whitepaper to understand how it works and a friend of mine suggested another approach: get some tokens and dive into it. That's what I did.
+i got some LINK tokens on Arbitrum to play around with it and really understand how the architecture works behind all the pretty layers of abstraction.
 
-I got some LINK tokens on Arbitrum to play around with it and really understand how the architecture works behind all the pretty layers of abstraction.
+in the analysis below, i'm going to be providing the pool with 1 LINK.
 
-In the analysis below, i'm going to be providing the pool with 1 LINK.
+## off-chain signature: EIP-2612
 
-## Off-chain Signature: EIP-2612
-
-The first thing AAVE prompts us, is to sign an **approval** to spend a number of tokens on our behalf. This is the raw data:
+the first thing AAVE prompts us, is to sign an **approval** to spend a number of tokens on our behalf. this is the raw data:
 
 ```json
 {
@@ -80,19 +78,19 @@ The first thing AAVE prompts us, is to sign an **approval** to spend a number of
 }
 ```
 
-You may notice that this doesn't have the usual parameters that a "normal" transaction does (`chainId`, `from`, `to`). This isn't a traditional on-chain transaction, it's an **off-chain permit signature** based on [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612).
+you may notice that this doesn't have the usual parameters that a "normal" transaction does (```chainId```, ```from```, ```to```). this isn't a traditional on-chain transaction, it's an **off-chain permit signature** based on [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612).
 
-> There's a really good article by [Vittorio Minacori](https://medium.com/noncept/understanding-eip-2612-and-erc20-permit-43ce8b829bd5) about this.
+> there's a really good article by [Vittorio Minacori](https://medium.com/noncept/understanding-eip-2612-and-erc20-permit-43ce8b829bd5) about this.
 
-It is an [EIP-712](https://eips.ethereum.org/EIPS/eip-712) structured message that our wallet asks us to sign. It authorizes some address `0x794a61358d6845594f94dc1db02a252b5b4814ad`) to spend 1 LINK (`1000000000000000000 wei`) from our address (`0x974dc51e1e8ea7ce6b283d92bb47a787515a91cf`) on the LINK token contract (`0xf97f4df75117a78c1a5a0dbb814af92458539fb4`).
+it is an [EIP-712](https://eips.ethereum.org/EIPS/eip-712) structured message that our wallet asks us to sign. it authorizes some address `0x794a61358d6845594f94dc1db02a252b5b4814ad`) to spend 1 LINK (`1000000000000000000 wei`) from our address (`0x974dc51e1e8ea7ce6b283d92bb47a787515a91cf`) on the LINK token contract (`0xf97f4df75117a78c1a5a0dbb814af92458539fb4`).
 
-What's the purpose of this you may ask? Gas optimization. Instead of sending an on-chain `approve()` transaction (which costs gas), we use this signature to grant allowance off-chain. The signature is then submitted with the transaction and verified on-chain by the LINK token's `permit()` function.
+the purpose of this is gas optimization. instead of sending an on-chain ```approve()``` transaction (which costs gas), we use this signature to grant allowance off-chain. the signature is then submitted with the transaction and verified on-chain by the LINK token's ```permit()``` function.
 
-After signing this, we can finally **supply** our tokens.
+after signing this, we can finally **supply** our tokens.
 
-## The supply transaction: supplyWithPermit()
+## the supply transaction: supplyWithPermit()
 
-This is the raw data of the supply transaction:
+this is the raw data of the supply transaction:
 
 ```json
 {
@@ -107,23 +105,23 @@ This is the raw data of the supply transaction:
 }
 ```
 
-Let's check the [function selector](https://www.4byte.directory/signatures/?bytes4_signature=0x02c205f0):
+let's check the [function selector](https://www.4byte.directory/signatures/?bytes4_signature=0x02c205f0):
 
-Here it is! This transaction will call `supplyWithPermit(address,uint256,address,uint16,uint256,uint8 permitV,bytes32 permitR,bytes32 permitS)` with the LINK token address, the amount we allowed the contract to spend, my EOA address and a couple other parameters including `uint8 permitV, bytes32 permitR, bytes32 permitS)`. These last three are the off-chain permit signature we signed before.
+here it is! this transaction will call ```supplyWithPermit(address,uint256,address,uint16,uint256,uint8 permitV,bytes32 permitR,bytes32 permitS)``` with the LINK token address, the amount we allowed the contract to spend, my EOA address and a couple other parameters including ```uint8 permitV, bytes32 permitR, bytes32 permitS)```. these last three are the off-chain permit signature we signed before.
 
-Let's finally send the transaction and see the magic happen on Tenderly:
+let's finally send the transaction and see the magic happen on Tenderly:
 
-From this transaction alone we can already learn a lot about how AAVE works internally:
+from this transaction alone we can already learn a lot about how AAVE works internally:
 
-1. The contract (`0x794a61358d6845594f94dc1db02a252b5b4814ad`) we allowed to spend our tokens before is a proxy contract called `InitializableImmutableAdminUpgradeabilityProxy`.
-2. The events emitted and the contracts they were emitted from: `InitializableImmutableAdminUpgradeabilityProxy` and `ClonableBeaconProxy` (This is a new one! Dive into it on Tenderly).
-   1. From `InitializableImmutableAdminUpgradeabilityProxy`: `ReserveDataUpdated()`, `Transfer()`, `Mint()`, `ReserveUsedAsCollateralEnabled()` and `Supply()`
-   2. From `ClonableBeaconProxy`: `Approval()` (to spend the tokens), `Transfer()` and `Approval()` (revoking access to the tokens)
-3. All the contracts used for this transaction
-4. Events emitted
-5. Gas
+1. the contract (`0x794a61358d6845594f94dc1db02a252b5b4814ad`) we allowed to spend our tokens before is a proxy contract called ```InitializableImmutableAdminUpgradeabilityProxy```.
+2. the events emitted and the contracts they were emitted from: ```InitializableImmutableAdminUpgradeabilityProxy``` and ```ClonableBeaconProxy```
+   1. from ```InitializableImmutableAdminUpgradeabilityProxy```: ```ReserveDataUpdated()```, ```Transfer()```, ```Mint()```, ```ReserveUsedAsCollateralEnabled()``` and ```Supply()```
+   2. from ```ClonableBeaconProxy```: ```Approval()``` (to spend the tokens), ```Transfer()``` and ```Approval()``` (revoking access to the tokens)
+3. all the contracts used for this transaction
+4. events emitted
+5. gas
 
-Focusing only on (a portion of) the execution flow at the bottom:
+focusing only on (a portion of) the execution flow at the bottom:
 
 ```
 JUMPDEST (0x974dc51e1e8ea7ce6b283d92bb47a787515a91cf => InitializableImmutableAdminUpgradeabilityProxy).supplyWithPermit0()
@@ -141,38 +139,38 @@ DELEGATECALL (InitializableImmutableAdminUpgradeabilityProxy => VariableDebtToke
 
 STATICCALL (InitializableImmutableAdminUpgradeabilityProxy => DefaultReserveInterestRateStrategyV2).calculateInterestRates() =>()
 
-/* We finally transfer 1 LINK */
+/* we finally transfer 1 LINK */
 DELEGATECALL (ClonableBeaconProxy => StandardArbERC20).transferFrom()=>()
 
-/* Second Approval event emitted */
+/* second Approval event emitted */
 LOG3 StandardArbERC20.Approval()
 
 DELEGATECALL (InitializableImmutableAdminUpgradeabilityProxy => AToken).mint()=>()
 ```
 
-> This simplified version can be misleading.
-> I recommend checking the execution trace on the link provided at the top of the article and unticking "Full Trace" to simplify Tenderly's view.
+> this simplified version can be misleading.
+> i recommend checking the execution trace on the link provided at the top of the article and unticking "Full Trace" to simplify Tenderly's view.
 
-AAVE follows this execution order: `update pool data -> transfer -> mint`
+AAVE follows this execution order: ```update pool data -> transfer -> mint```
 
-The first line is a `JUMPDEST` at `supplyWithPermit()`. This marks the entry point into the proxy's bytecode.
+the first line is a ```JUMPDEST``` at ```supplyWithPermit()```. This marks the entry point into the proxy's bytecode.
 
-On the second line we can already see the proxy working: it performs a `DELEGATECALL` to the implementation contract (`L2PoolInstance`). This call executes the `supplyWithPermit()` logic in the context of the proxy's storage. Here, the `permit()` call is made to the LINK token, using the signature we did before sending the transaction. This updates the allowance and emits the first `Approval()` event (value = 1 LINK), but doesn't transfer our tokens. Yet.
+on the second line we can already see the proxy working: it performs a ```DELEGATECALL``` to the implementation contract (```L2PoolInstance```). this call executes the ```supplyWithPermit()``` logic in the context of the proxy's storage. here, the ```permit()``` call is made to the LINK token, using the signature we did before sending the transaction. this updates the allowance and emits the first ```Approval()``` event (value = 1 LINK), but doesn't transfer our tokens. Yet.
 
-After the permit, `supplyWithPermit()` calls `SupplyLogic.executeSupply()` via another internal `DELEGATECALL`. `SupplyLogic` runs in the Pool's context, using the storage references (reserves, etc.) and the `ExecuteSupplyParams()`.
+after the permit, ```supplyWithPermit()``` calls ```SupplyLogic.executeSupply()``` via another internal ```DELEGATECALL```. ```SupplyLogic``` runs in the Pool's context, using the storage references (reserves, etc.) and the ```ExecuteSupplyParams()```.
 
-`executeSupply()` then calls the `scaledTotalSupply()` of the variable debt token (`0x5e76e98e0963ecdc6a065d1435f84065b7523f39`) to calculate interest rates and reserve data. This token tracks the borrowing positions of users at variable rate mode. During this call AAVE updates the pool's state: queries the variable debt token to calculate the total debt, which feeds into `calculateInterestRates()`, adjusting rates based on the new liquidity.
+```executeSupply()``` then calls the ```scaledTotalSupply()``` of the variable debt token (`0x5e76e98e0963ecdc6a065d1435f84065b7523f39`) to calculate interest rates and reserve data. this token tracks the borrowing positions of users at variable rate mode. during this call AAVE updates the pool's state: queries the variable debt token to calculate the total debt, which feeds into ```calculateInterestRates()```, adjusting rates based on the new liquidity.
 
-Still inside `executeSupply()`, `safeTransferFrom()` calls `transferFrom()` on the LINK token to move 1 LINK from ourselves to the aToken address. The permit allowance is consumed here, and a second `Approval()` event (value = 0) is emitted post-transfer to revoke it.
+still inside ```executeSupply()```, ```safeTransferFrom()``` calls ```transferFrom()``` on the LINK token to move 1 LINK from ourselves to the aToken address. the permit allowance is consumed here, and a second ```Approval()``` event (value = 0) is emitted post-transfer to revoke it.
 
-Finally, `executeSupply()` mints us some aTokens. This credits us with our share of the pool.
+finally, ```executeSupply()``` mints us some aTokens. this credits us with our share of the pool.
 
-After our tokens are supplied to the pool and aTokens are minted, AAVE is just getting started. But that's for another article.
+after our tokens are supplied to the pool and aTokens are minted, AAVE is just getting started.
 
-## Conclusion
+## conclusion
 
-From this single transaction, we gained insight into AAVE's event emissions, gas optimization strategies, and the interplay between proxy and implementation contracts.
+from this single transaction, we gained insight into AAVE's event emissions, gas optimization strategies, and the interplay between proxy and implementation contracts.
 
-This practical approach proved invaluable for understanding the intricacies of decentralized lending, offering a clearer picture of how AAVE manages liquidity, interest rates, and user positions in a trustless system.
+this practical approach proved invaluable for understanding the intricacies of decentralized lending, offering a clearer picture of how AAVE manages liquidity, interest rates, and user positions in a trustless system.
 
-For anyone looking to grasp the inner workings of DeFi protocols, combining theoretical study with on-chain experimentation is a powerful way to bridge the gap between concept and reality.
+for anyone looking to grasp the inner workings of DeFi protocols, combining theoretical study with on-chain experimentation is a powerful way to bridge the gap between concept and reality.

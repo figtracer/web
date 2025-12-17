@@ -117,18 +117,6 @@ export const BLOG_POSTS: BlogPost[] = [
     link: '/blog/decrypting-a-upx-packed-arm-iot-botnet',
     uid: 'blog-5',
   },
-  {
-    title: 'a note on helplessness',
-    description: 'personal reflections on competition and collaboration',
-    link: '/blog/a-note-on-helplessness',
-    uid: 'blog-8',
-  },
-  {
-    title: 'two swords',
-    description: 'reflections on time, perspective, and human connection',
-    link: '/blog/two-swords',
-    uid: 'blog-9',
-  },
 ]
 
 export const SOCIAL_LINKS: SocialLink[] = [

@@ -14,7 +14,7 @@ so i decided to take a deeper look at it and figure out how blobs are maintained
 
 ## maintain.rs
 
-the main tx-pool `maintainer.rs` function `maintain_transaction_pool` is located here https://github.com/paradigmxyz/reth/blob/main/crates/transaction-pool/src/maintain.rs#L123
+the main tx-pool `maintainer.rs` function `maintain_transaction_pool` is located here [maintain.rs#L123](https://github.com/paradigmxyz/reth/blob/main/crates/transaction-pool/src/maintain.rs#L123)
 
 there's a lot going on here but inside the loop is where the most important part (for us) resides:
 

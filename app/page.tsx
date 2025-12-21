@@ -77,16 +77,7 @@ export default function Personal() {
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
-      >
-        <div className="flex-1">
-          <p className="text-zinc-600 dark:text-zinc-400">
-            half-brazilian, half-portuguese tinkerer passionate about systems,
-            privacy, and crypto. hooked on system internals since childhood;
-            modding games, poking at infosec problems, and understanding how
-            everything connects. all-in on Rust, systems, and blockchains.
-          </p>
-        </div>
-      </motion.section>
+      ></motion.section>
 
       <motion.section
         variants={VARIANTS_SECTION}

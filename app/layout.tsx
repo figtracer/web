@@ -20,8 +20,7 @@ export const metadata: Metadata = {
     default: '@figtracer',
     template: '%s | Figtracer',
   },
-  description:
-    'Half-Brazilian, half-Portuguese tinkerer passionate about systems, privacy, and crypto. All-in on Rust, systems, and blockchains.',
+  description: 'passionate about systems, privacy, and crypto',
 }
 
 const geist = Geist({

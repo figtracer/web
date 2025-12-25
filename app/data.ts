@@ -134,7 +134,7 @@ export const SOCIAL_LINKS: SocialLink[] = [
   },
 ]
 
-export const EMAIL = 'gustavo@figtracer.com'
+export const EMAIL = 'me@figtracer.com'
 
 export const CONTRIBUTIONS: Contribution[] = [
   {

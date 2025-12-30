@@ -158,4 +158,11 @@ export const CONTRIBUTIONS: Contribution[] = [
     link: 'https://ethglobal.com/showcase/inspectifi-tu6n1',
     id: 'contrib3',
   },
+  {
+    name: 'cantina audits',
+    description:
+      'security audits completed on cantina, demonstrating practical smart contract security expertise.',
+    link: 'https://cantina.xyz/u/figtracer',
+    id: 'contrib4',
+  },
 ]

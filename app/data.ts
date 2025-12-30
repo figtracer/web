@@ -159,8 +159,8 @@ export const CONTRIBUTIONS: Contribution[] = [
     id: 'contrib3',
   },
   {
-    name: 'cantina audits',
-    description: 'practical smart contract security',
+    name: 'auditing',
+    description: 'practical smart contract security @cantina.xyz',
     link: 'https://cantina.xyz/u/figtracer',
     id: 'contrib4',
   },

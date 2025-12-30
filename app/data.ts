@@ -160,8 +160,7 @@ export const CONTRIBUTIONS: Contribution[] = [
   },
   {
     name: 'cantina audits',
-    description:
-      'security audits completed on cantina, demonstrating practical smart contract security expertise.',
+    description: 'practical smart contract security',
     link: 'https://cantina.xyz/u/figtracer',
     id: 'contrib4',
   },

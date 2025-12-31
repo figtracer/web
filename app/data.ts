@@ -43,7 +43,7 @@ export const PROJECTS: Project[] = [
   {
     name: 'stylus-mixer',
     description: 'zero-knowledge mixer written in rust using arbitrum stylus.',
-    link: 'https://github.com/figtracer/stylus-mixer',
+    link: 'https://github.com/figtracer/stylus_mixer',
     id: 'project2',
   },
   {

@@ -34,6 +34,13 @@ type Contribution = {
 
 export const PROJECTS: Project[] = [
   {
+    name: 'reth-mdbx-profiler',
+    description:
+      'ebpf-based profiler for analyzing mdbx page fault patterns and cursor operations in reth.',
+    link: 'https://github.com/figtracer/reth-mdbx-profiler',
+    id: 'project0',
+  },
+  {
     name: 'blob-exex',
     description:
       'blob indexer built with reth exex for reth-native blob processing.',

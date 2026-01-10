@@ -41,7 +41,7 @@ export const PROJECTS: Project[] = [
     id: 'project0',
   },
   {
-    name: 'blob-exex',
+    name: 'reth-blob-exex',
     description:
       'blob indexer built with reth exex for reth-native blob processing.',
     link: 'https://exblob.figtracer.com/',
@@ -149,6 +149,13 @@ export const CONTRIBUTIONS: Contribution[] = [
     description:
       'modular, contributor-friendly and blazing-fast rust implementation of the ethereum protocol.',
     link: 'https://github.com/paradigmxyz/reth',
+    id: 'contrib0',
+  },
+  {
+    name: 'alloy-rs',
+    description:
+      'implements high-performance, well-tested & documented libraries for interacting with Ethereum and other EVM-based chains.',
+    link: 'https://github.com/alloy-rs',
     id: 'contrib1',
   },
   {

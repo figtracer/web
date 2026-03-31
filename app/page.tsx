@@ -1,16 +1,13 @@
 'use client'
 import { motion, useScroll, useTransform } from 'motion/react'
-import { Spotlight } from '@/components/ui/spotlight'
 import { Magnetic } from '@/components/ui/magnetic'
 import Link from 'next/link'
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import {
-  WORK_EXPERIENCE,
   BLOG_POSTS,
   EMAIL,
   SOCIAL_LINKS,
 } from './data'
-import { useRef } from 'react'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -124,32 +121,30 @@ function GithubSection() {
 }
 
 export default function Personal() {
-  const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll()
-  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -120])
-  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -80])
-  const orbY3 = useTransform(scrollYProgress, [0, 1], [0, -200])
+  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -150])
+  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -100])
+  const orbY3 = useTransform(scrollYProgress, [0, 1], [0, -250])
 
   return (
     <>
       {/* Animated background orbs */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <motion.div
-          className="animate-orb-drift absolute -left-32 top-1/4 h-72 w-72 rounded-full bg-gradient-to-br from-violet-500/8 to-blue-500/8 blur-3xl dark:from-violet-500/10 dark:to-blue-500/10"
+          className="absolute -left-32 top-1/4 h-72 w-72 rounded-full bg-zinc-300/30 blur-3xl dark:bg-zinc-600/15"
           style={{ y: orbY1 }}
         />
         <motion.div
-          className="animate-orb-drift-reverse absolute -right-24 top-1/2 h-96 w-96 rounded-full bg-gradient-to-br from-cyan-500/6 to-emerald-500/6 blur-3xl dark:from-cyan-500/8 dark:to-emerald-500/8"
+          className="absolute -right-24 top-1/2 h-96 w-96 rounded-full bg-zinc-200/25 blur-3xl dark:bg-zinc-500/10"
           style={{ y: orbY2 }}
         />
         <motion.div
-          className="animate-orb-drift absolute left-1/3 top-3/4 h-64 w-64 rounded-full bg-gradient-to-br from-rose-500/5 to-orange-500/5 blur-3xl dark:from-rose-500/8 dark:to-orange-500/8"
+          className="absolute left-1/3 top-3/4 h-64 w-64 rounded-full bg-zinc-300/20 blur-3xl dark:bg-zinc-600/10"
           style={{ y: orbY3 }}
         />
       </div>
 
       <motion.main
-        ref={containerRef}
         className="space-y-24"
         variants={VARIANTS_CONTAINER}
         initial="hidden"
@@ -161,43 +156,6 @@ export default function Personal() {
         >
           <GithubSection />
         </motion.section>
-
-        <ScrollReveal>
-          <section>
-            <h3 className="mb-5 text-lg font-medium">experience</h3>
-            <div className="flex flex-col space-y-2">
-              {WORK_EXPERIENCE.map((job) => (
-                <a
-                  className="relative overflow-hidden rounded-2xl bg-zinc-300/30 p-[1px] dark:bg-zinc-600/30"
-                  href={job.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  key={job.id}
-                >
-                  <Spotlight
-                    className="from-zinc-900 via-zinc-800 to-zinc-700 blur-2xl dark:from-zinc-100 dark:via-zinc-200 dark:to-zinc-50"
-                    size={64}
-                  />
-                  <div className="relative h-full w-full rounded-[15px] bg-white p-4 dark:bg-zinc-950">
-                    <div className="relative flex w-full flex-row justify-between">
-                      <div>
-                        <h4 className="font-normal dark:text-zinc-100">
-                          {job.title}
-                        </h4>
-                        <p className="text-zinc-500 dark:text-zinc-400">
-                          {job.company}
-                        </p>
-                      </div>
-                      <p className="text-zinc-600 dark:text-zinc-400">
-                        {job.date}
-                      </p>
-                    </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </section>
-        </ScrollReveal>
 
         <ScrollReveal>
           <section>
